@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <list>
-#include "ship.hpp"
+#include "Ship.hpp"
 #include "Vector.hpp"
 
 
