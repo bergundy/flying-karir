@@ -1,1 +1,1 @@
- g++ karir.cpp CSurface.cpp CEvent.cpp `sdl-config --cflags --libs` -lSDL_gfx -lSDL_image -o karir && ./karir   
+g++ -I/usr/include/boost -lboost_serialization `sdl-config --cflags --libs` -lSDL_gfx -lSDL_image *.cpp -o karir && ./karir
