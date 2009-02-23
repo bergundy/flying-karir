@@ -12,6 +12,7 @@
 #include <string.h> /* memset() */
 #include "UDP_Sock.hpp"
 #include "NetEvent.hpp"
+#include "Ship.hpp"
 
 #define PORT 1500
 #define MAX_MSG 100
@@ -39,7 +40,10 @@ int UDP_Sock::isReadable(int sd,int * error) { // milliseconds
   return FD_ISSET(sd,&socketReadSet) != 0;
 } /* isReadable */
 
-void UDP_Sock::snd(const NetEvent& serial) {
+//template <class Serial>
+    //void UDP_Sock::snd(const Serial& serial)
+    void UDP_Sock::snd(const NetEvent& serial)
+{
 
     std::ostringstream os;
     boost::archive::text_oarchive oa(os);
@@ -50,95 +54,38 @@ void UDP_Sock::snd(const NetEvent& serial) {
 		(struct sockaddr *) &remoteAddr, sizeof(remoteAddr));
 
     if(rc<0) {
-        std::cout << "cannot send data " << i-1 <<std::endl;
+        std::cout << "cannot send data " << std::endl;
         close(sd);
         return;
     }
 }
-
-void UDP_Sock::rcv(NetEvent& serial) {
+//template <class Serial>
+    //bool UDP_Sock::rcv(Serial& serial)
+    bool UDP_Sock::rcv(NetEvent& serial)
+{
     memset(msg,0x0,MAX_MSG);
     remoteLen = sizeof(remoteAddr);
 
-    if (!isReadable(sd,&error)) return;
+    if (!isReadable(sd,&error)) return false;
 
     /* receive echoed message */
     n = recvfrom(sd, msg, MAX_MSG, FLAGS,
       (struct sockaddr *) &remoteAddr, &remoteLen);
 
     if(n<0) {
-        std::cerr << "cannot receive data \n";
-        return;
+        std::cerr << "cannot receive data\n";
+        return false;
     }
 
     /* print received message */
-    printf(": echo from %s:UDP%u : %s \n", 
-      inet_ntoa(remoteAddr.sin_addr),
-      ntohs(remoteAddr.sin_port),msg);
+    std::cout << "echo from " << inet_ntoa(remoteAddr.sin_addr)
+              << " UDP:" << ntohs(remoteAddr.sin_port)
+              << ": " << msg << std::endl;
     
     std::istringstream is(std::string(msg, strlen(msg)));
     boost::archive::text_iarchive ia(is);
     ia >> serial;
-}
-
-void UDP_Sock::rcvsnd() {
-    memset(msg,0x0,MAX_MSG);
-    remoteLen = sizeof(remoteAddr);
-
-    if (!isReadable(sd,&error)) return;
-
-    /* receive echoed message */
-    n = recvfrom(sd, msg, MAX_MSG, FLAGS,
-      (struct sockaddr *) &remoteAddr, &remoteLen);
-
-    if(n<0) {
-        std::cerr << "cannot receive data \n";
-        return;
-    }
-
-    /* print received message */
-    printf(": echo from %s:UDP%u : %s \n", 
-      inet_ntoa(remoteAddr.sin_addr),
-      ntohs(remoteAddr.sin_port),msg);
-
-
-    rc = sendto(sd, msg, strlen(msg)+1, FLAGS, 
-		(struct sockaddr *) &remoteAddr, sizeof(remoteAddr));
-
-    if(rc<0) {
-        std::cout << "cannot send data " << i-1 <<std::endl;
-        close(sd);
-        return;
-    }
-}
-
-void UDP_Sock::sndrcv(char* message) {
-    rc = sendto(sd, message, strlen(message)+1, FLAGS, 
-		(struct sockaddr *) &remoteAddr, sizeof(remoteAddr));
-
-    if(rc<0) {
-        std::cout << "cannot send data " << i-1 <<std::endl;
-        close(sd);
-        return;
-    }
-    memset(msg,0x0,MAX_MSG);
-    remoteLen = sizeof(remoteAddr);
-
-    if (!isReadable(sd,&error)) return;
-
-    /* receive echoed message */
-    n = recvfrom(sd, msg, MAX_MSG, FLAGS,
-      (struct sockaddr *) &remoteAddr, &remoteLen);
-
-    if(n<0) {
-        std::cerr << "cannot receive data \n";
-        return;
-    }
-
-    /* print received message */
-    printf(": echo from %s:UDP%u : %s \n", 
-      inet_ntoa(remoteAddr.sin_addr),
-      ntohs(remoteAddr.sin_port),msg);
+    return true;
 }
 
 bool UDP_Sock::create_server() {

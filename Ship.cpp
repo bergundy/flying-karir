@@ -15,7 +15,13 @@ Ship::Ship() : missile_id(-1), ship_id(0), fire_damage(0), fire_wait(0),
                max_speed(0),  rotate(0),  rotate_speed(0), max_distance(0),
                distance(0) {}
 
+
+void Ship::Call(SDLKey key, double arg) {
+    (this->*member_callback[key])(arg);   
+}
+
 void Ship::Accelerating(double i) {
+    cout << "weeee... i'm accelerating" << endl;
 	accelerating += i;
 }
 
@@ -116,6 +122,7 @@ Ship Ship::Fire() {
 	new_missile.ship_surf = missile_surf;
 	new_missile.max_speed =	acc_speed * 10;
 	new_missile.max_distance = 500;
+	//new_missile.missile_id = ship_id;
 	new_missile.missile_id = ship_id;
 	new_missile.hit_points = 1;
 

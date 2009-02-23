@@ -4,6 +4,9 @@
 #include <SDL.h>
 #include <vector>
 #include "Vector.hpp"
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+
 
 #define BOARD_X		800
 #define BOARD_Y		600
@@ -17,12 +20,31 @@
 
 
 class Cords {
+    friend class boost::serialization::access;
+
 	public:
 
 	double x;
 	double y;
 	double degree;
+
 	Cords();
+
+    Cords& operator=(const Cords& newc) {
+        x = newc.x;
+        y = newc.y;
+        degree = newc.degree;
+    }
+
+    private:
+    template<class Archive>
+        void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & x;
+        ar & y;
+        ar & degree;
+    }
+
 };
 
 class Explosion {

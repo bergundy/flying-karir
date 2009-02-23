@@ -39,14 +39,15 @@ class Ship {
 	double fire_damage;
 
 	double hit_points;
-    typedef void (*fp)();
-    typedef std::map<SDLKey, fp> keymap;
-    keymap action;
-		
+
+    typedef void (Ship::*func_ptr)(double);
+    typedef std::map<SDLKey, func_ptr> keymap;
+    keymap member_callback;
 
 	public:
+    void Call(SDLKey, double);
 	Ship();
-    	SDL_Surface* GetSurface(vsurf_sz);
+    SDL_Surface* GetSurface(vsurf_sz);
 	void NextShip();
 	void Rotate(double);
 	void Rotate();

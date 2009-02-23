@@ -2,6 +2,7 @@
 #define UDP_SOCK_HPP 
 
 #include "NetEvent.hpp"
+#include "Ship.hpp"
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #define MAX_MSG 100
@@ -11,10 +12,10 @@ public:
     bool create_server();
     bool create_client(char*);
 
+    //template <class Serial> void snd(const Serial&);
+    //template <class Serial> bool rcv(Serial&);
     void snd(const NetEvent&);
-    void rcv(NetEvent&);
-    void sndrcv(char*);
-    void rcvsnd();
+    bool rcv(NetEvent&);
     int isReadable(int sd,int * error);
 private:
     int sd, rc, i, n, error;

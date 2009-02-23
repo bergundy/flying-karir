@@ -32,7 +32,7 @@ class DirectionDrawer : public CEvent {
 	double explosion_frames;
 	vector<Explosion> explosions;
     UDP_Sock Socket;
-
+    Uint8 myId;
 
 	public:
 	DirectionDrawer();
@@ -57,7 +57,11 @@ DirectionDrawer::DirectionDrawer() {
 }
 
 void DirectionDrawer::OnKeyDown(SDLKey sym, SDLMod mod, Uint16 unicode) {
-    NetEvent baba(true,0, sym);
+    Cords cords;
+    for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+        if (a->ship_id == myId)
+            cords = a->ShipCords;
+    NetEvent baba(true,myId, sym, cords);
     Socket.snd(baba);
 	switch(sym) { 
 		case SDLK_ESCAPE: 
@@ -161,15 +165,106 @@ void DirectionDrawer::OnKeyDown(SDLKey sym, SDLMod mod, Uint16 unicode) {
 
 	}
 }
+
+void DirectionDrawer::OnKeyUp(SDLKey sym, SDLMod mod, Uint16 unicode) {
+    Cords cords;
+    for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+        if (a->ship_id == myId)
+            cords = a->ShipCords;
+    NetEvent baba(false,myId, sym, cords);
+    Socket.snd(baba);
+    
+    for (ship_iter a = ships.begin(); a != ships.end(); a++) {
+        Ship::keymap::const_iterator it = a->member_callback.find(sym);
+        if (it != a->member_callback.end()) {
+            cout << sym << endl;
+            a->Call(sym,-1);
+        }
+    }
+	switch(sym) { 
+// player 1
+		case SDLK_RIGHT:
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 1) {
+					a->Rotate((a->rotate_speed));
+					break;
+				}
+			break;
+
+		case SDLK_LEFT:
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 1) {
+					a->Rotate(-1 * a->rotate_speed);
+					break;
+				}
+			break;
+
+		case SDLK_DOWN:
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 1) {
+					a->Accelerating(1);
+					break;
+				}
+			break;
+
+//		case SDLK_UP: 
+//			for (ship_iter a = ships.begin(); a != ships.end(); a++) {
+//                a->Accelerating(-1);
+//                break;
+//           }
+//			break;
+
+
+
+// player 2
+		case SDLK_d:
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 2) {
+					a->Rotate((a->rotate_speed));
+					break;
+				}
+			break;
+
+		case SDLK_a:
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 2) {
+					a->Rotate(-1 * a->rotate_speed);
+					break;
+				}
+			break;
+
+		case SDLK_s:
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 2) {
+					a->Accelerating(1);
+					break;
+				}
+			break;
+
+		case SDLK_w: 
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 2) {
+					a->Accelerating(-1);
+					break;
+				}
+			break;
+
+	}
+}
+
 void DirectionDrawer::ExecNetEvent(const NetEvent& event) {
     Uint8 id   = event.get_id();
     SDLKey sym = event.event_key();
     bool down  = event.is_down();
-    Ship* a = &(ships[id]);
+    ship_iter a;
+    for (ship_iter iter = ships.begin(); iter != ships.end(); ++iter) 
+        if (iter->ship_id == id) {
+            a = iter;
+        }
 	switch(sym) { 
 // player 1
 		case SDLK_RIGHT:
-            if (down) {
+            if (!down) {
                 a->Rotate((a->rotate_speed));
             }
             else {
@@ -178,7 +273,7 @@ void DirectionDrawer::ExecNetEvent(const NetEvent& event) {
 			break;
 
 		case SDLK_LEFT:
-            if (down) {
+            if (!down) {
                 a->Rotate(-1 * a->rotate_speed);
             }
             else {
@@ -187,7 +282,7 @@ void DirectionDrawer::ExecNetEvent(const NetEvent& event) {
 			break;
 
 		case SDLK_DOWN:
-            if (down) {
+            if (!down) {
                 a->Accelerating(1);
             }
             else {
@@ -196,7 +291,7 @@ void DirectionDrawer::ExecNetEvent(const NetEvent& event) {
 			break;
 
 		case SDLK_UP: 
-            if (down) {
+            if (!down) {
                 a->Accelerating(-1);
             }
             else {
@@ -205,161 +300,59 @@ void DirectionDrawer::ExecNetEvent(const NetEvent& event) {
 			break;
 
 		case SDLK_SPACE: 
-                if (a->CanFire())
-                    ships.push_back(a->Fire());
+                cout << "preparing to fire" << endl;
+                if (a->CanFire()) {
+                    cout << "firing!" << endl;
+                    //ships.push_back(a->Fire());
+                    Ship firebaba = a->Fire();
+                    cout << firebaba.fire_damage;
+                    ships.push_back(firebaba);
+                    cout << "succesfully pushed back" << endl;
+                }
 			break;
 
 // player 2
-/*		case SDLK_d:
-					a->Rotate((a->rotate_speed));
-			break;
-
-		case SDLK_a:
-					a->Rotate(-1 * a->rotate_speed);
-			break;
-
-		case SDLK_s:
-					a->Accelerating(1);
-			break;
-
-		case SDLK_w: 
-					a->Accelerating(-1);
-			break;
-
-*/
-/*
-// player 2 		
-
-		case SDLK_LCTRL: 
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 2) {
-					if (a->CanFire())
-						ships.push_back(a->Fire());
-					break;
-				}
-			break;
-
 		case SDLK_d:
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 2) {
-					a->Rotate((-1 * a->rotate_speed));
-					break;
-				}
-			break;
-
-		case SDLK_a:
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 2) {
-					a->Rotate(a->rotate_speed);
-					break;
-				}
-			break;
-
-		case SDLK_s:
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 2) {
-					a->Accelerating(-1);
-					break;
-				}
-			break;
-
-		case SDLK_w: 
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 2) {
-					a->Accelerating(1);
-					break;
-				}
-			break;
-
-*/
-	}
-}
-
-void DirectionDrawer::OnKeyUp(SDLKey sym, SDLMod mod, Uint16 unicode) {
-    /*
-    for (ship_iter a = ships.begin(); a != ships.end(); a++) {
-        Ship::keymap::const_iterator it = a->action.find(sym);
-        if (it != a->action.end()) {
-            cout << sym << endl;
-            Ship::fp baba = it->second;
-            (*baba)();
-        }
-    }
-    */
-    NetEvent baba(false,0, sym);
-    Socket.snd(baba);
-	switch(sym) { 
-// player 1
-		case SDLK_RIGHT:
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 1) {
-					a->Rotate((a->rotate_speed));
-					break;
-				}
-			break;
-
-		case SDLK_LEFT:
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 1) {
-					a->Rotate(-1 * a->rotate_speed);
-					break;
-				}
-			break;
-
-		case SDLK_DOWN:
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 1) {
-					a->Accelerating(1);
-					break;
-				}
-			break;
-
-		case SDLK_UP: 
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) {
-                a->Accelerating(-1);
-                break;
+            if (!down) {
+                a->Rotate((a->rotate_speed));
+            }
+            else {
+                a->Rotate((-1 * a->rotate_speed));
             }
 			break;
 
-
-
-// player 2
-		case SDLK_d:
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 2) {
-					a->Rotate((a->rotate_speed));
-					break;
-				}
-			break;
-
 		case SDLK_a:
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 2) {
-					a->Rotate(-1 * a->rotate_speed);
-					break;
-				}
+            if (!down) {
+                a->Rotate(-1 * a->rotate_speed);
+            }
+            else {
+                a->Rotate((a->rotate_speed));
+            }
 			break;
 
 		case SDLK_s:
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 2) {
-					a->Accelerating(1);
-					break;
-				}
+            if (!down) {
+                a->Accelerating(1);
+            }
+            else {
+                a->Accelerating(-1);
+            }
 			break;
 
 		case SDLK_w: 
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 2) {
-					a->Accelerating(-1);
-					break;
-				}
+            if (!down) {
+                a->Accelerating(-1);
+            }
+            else {
+                a->Accelerating(1);
+            }
 			break;
 
+		case SDLK_LCTRL: 
+                if (a->CanFire())
+                    ships.push_back(a->Fire());
+			break;
 	}
-}
-void Accel() {
-    cout << "baba is accelarating" << endl;
 }
 
 void DirectionDrawer::Init() { 
@@ -379,7 +372,7 @@ void DirectionDrawer::Init() {
 	ship.hit_points = 100;
 	ship.LoadSurface("./gfx/Ship1.png",ship.ship_surf);
 	ship.LoadSurface("./gfx/fire.png",ship.missile_surf);
-    ship.action[SDLK_UP] = &Accel;
+    ship.member_callback[SDLK_UP] = &Ship::Accelerating;
 
 	ships.push_back(ship);
 // seconds ship 
@@ -407,11 +400,14 @@ bool DirectionDrawer::PrepSDL(char* server_addr) {
         cout << "initializing server ..\n";
         if ( !Socket.create_server() )
             return false;
+        myId = 1;
+        SDL_Delay(2000);
     }
     else {
         cout << "initializing client ..\n";
         if ( !Socket.create_client(server_addr) )
             return false;
+        myId = 2;
     }
         
 
@@ -486,24 +482,32 @@ void DirectionDrawer::FindCollisions() {
 }
 
 void DirectionDrawer::MainLoop() {
-	int i = 0;
 
 	while (Running == 1) {
 
-
 		SDL_Event event;
-        NetEvent nevent;
-        Socket.rcv(nevent);
-        ExecNetEvent(nevent);
         
-		while (SDL_PollEvent(&event))
+		while (SDL_PollEvent(&event)) {
 			OnEvent(&event);
+        }
 
+        NetEvent nevent;
+        while (Socket.rcv(nevent)) {
+            for (ship_iter si = ships.begin(); si != ships.end(); ++si)
+                if (si->ship_id == nevent.get_id() ) {
+                    si->ShipCords = nevent.get_cords();
+                    ExecNetEvent(nevent);
+                    break;
+                }
+        }
+
+                   //cout << "im still alive!" << endl;
 		if (Pause < 0) { 
 			for (ship_iter sp = ships.begin(); sp != ships.end(); sp++) 
 				sp->NextShip();
 
 			FindCollisions();
+
 
 			Render();
 
