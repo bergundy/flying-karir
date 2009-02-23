@@ -14,6 +14,8 @@
 #include "generic.hpp"
 #include "Ship.hpp"
 #include "Vector.hpp"
+#include "UDP_Sock.hpp"
+#include "NetEvent.hpp"
 
 using namespace std;
 	
@@ -29,11 +31,13 @@ class DirectionDrawer : public CEvent {
 	vector<Ship> ships;
 	double explosion_frames;
 	vector<Explosion> explosions;
+    UDP_Sock Socket;
 
 
 	public:
 	DirectionDrawer();
-	bool PrepSDL();
+    void ExecNetEvent(const NetEvent&);
+    bool PrepSDL(char*);
 	void Init();
 	void MainLoop();
 	void Render();
@@ -53,6 +57,8 @@ DirectionDrawer::DirectionDrawer() {
 }
 
 void DirectionDrawer::OnKeyDown(SDLKey sym, SDLMod mod, Uint16 unicode) {
+    NetEvent baba(true,0, sym);
+    Socket.snd(baba);
 	switch(sym) { 
 		case SDLK_ESCAPE: 
 			Running = 0;
@@ -155,8 +161,133 @@ void DirectionDrawer::OnKeyDown(SDLKey sym, SDLMod mod, Uint16 unicode) {
 
 	}
 }
+void DirectionDrawer::ExecNetEvent(const NetEvent& event) {
+    Uint8 id   = event.get_id();
+    SDLKey sym = event.event_key();
+    bool down  = event.is_down();
+    Ship* a = &(ships[id]);
+	switch(sym) { 
+// player 1
+		case SDLK_RIGHT:
+            if (down) {
+                a->Rotate((a->rotate_speed));
+            }
+            else {
+                a->Rotate((-1 * a->rotate_speed));
+            }
+			break;
+
+		case SDLK_LEFT:
+            if (down) {
+                a->Rotate(-1 * a->rotate_speed);
+            }
+            else {
+                a->Rotate((a->rotate_speed));
+            }
+			break;
+
+		case SDLK_DOWN:
+            if (down) {
+                a->Accelerating(1);
+            }
+            else {
+                a->Accelerating(-1);
+            }
+			break;
+
+		case SDLK_UP: 
+            if (down) {
+                a->Accelerating(-1);
+            }
+            else {
+                a->Accelerating(1);
+            }
+			break;
+
+		case SDLK_SPACE: 
+                if (a->CanFire())
+                    ships.push_back(a->Fire());
+			break;
+
+// player 2
+/*		case SDLK_d:
+					a->Rotate((a->rotate_speed));
+			break;
+
+		case SDLK_a:
+					a->Rotate(-1 * a->rotate_speed);
+			break;
+
+		case SDLK_s:
+					a->Accelerating(1);
+			break;
+
+		case SDLK_w: 
+					a->Accelerating(-1);
+			break;
+
+*/
+/*
+// player 2 		
+
+		case SDLK_LCTRL: 
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 2) {
+					if (a->CanFire())
+						ships.push_back(a->Fire());
+					break;
+				}
+			break;
+
+		case SDLK_d:
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 2) {
+					a->Rotate((-1 * a->rotate_speed));
+					break;
+				}
+			break;
+
+		case SDLK_a:
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 2) {
+					a->Rotate(a->rotate_speed);
+					break;
+				}
+			break;
+
+		case SDLK_s:
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 2) {
+					a->Accelerating(-1);
+					break;
+				}
+			break;
+
+		case SDLK_w: 
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
+				if (a->ship_id == 2) {
+					a->Accelerating(1);
+					break;
+				}
+			break;
+
+*/
+	}
+}
 
 void DirectionDrawer::OnKeyUp(SDLKey sym, SDLMod mod, Uint16 unicode) {
+    /*
+    for (ship_iter a = ships.begin(); a != ships.end(); a++) {
+        Ship::keymap::const_iterator it = a->action.find(sym);
+        if (it != a->action.end()) {
+            cout << sym << endl;
+            Ship::fp baba = it->second;
+            (*baba)();
+        }
+    }
+    */
+    NetEvent baba(false,0, sym);
+    Socket.snd(baba);
 	switch(sym) { 
 // player 1
 		case SDLK_RIGHT:
@@ -184,11 +315,10 @@ void DirectionDrawer::OnKeyUp(SDLKey sym, SDLMod mod, Uint16 unicode) {
 			break;
 
 		case SDLK_UP: 
-			for (ship_iter a = ships.begin(); a != ships.end(); a++) 
-				if (a->ship_id == 1) {
-					a->Accelerating(-1);
-					break;
-				}
+			for (ship_iter a = ships.begin(); a != ships.end(); a++) {
+                a->Accelerating(-1);
+                break;
+            }
 			break;
 
 
@@ -228,6 +358,9 @@ void DirectionDrawer::OnKeyUp(SDLKey sym, SDLMod mod, Uint16 unicode) {
 
 	}
 }
+void Accel() {
+    cout << "baba is accelarating" << endl;
+}
 
 void DirectionDrawer::Init() { 
 	vector<Ship> empty_ship_vec;
@@ -246,6 +379,7 @@ void DirectionDrawer::Init() {
 	ship.hit_points = 100;
 	ship.LoadSurface("./gfx/Ship1.png",ship.ship_surf);
 	ship.LoadSurface("./gfx/fire.png",ship.missile_surf);
+    ship.action[SDLK_UP] = &Accel;
 
 	ships.push_back(ship);
 // seconds ship 
@@ -265,9 +399,21 @@ void DirectionDrawer::Init() {
 	ships.push_back(ship2);
 }
 
-bool DirectionDrawer::PrepSDL() { 
+bool DirectionDrawer::PrepSDL(char* server_addr) { 
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
 		return false;
+
+    if ( server_addr == NULL ) {
+        cout << "initializing server ..\n";
+        if ( !Socket.create_server() )
+            return false;
+    }
+    else {
+        cout << "initializing client ..\n";
+        if ( !Socket.create_client(server_addr) )
+            return false;
+    }
+        
 
 	if ((Surf_Display = SDL_SetVideoMode(BOARD_X,BOARD_Y,32, SDL_HWSURFACE | SDL_DOUBLEBUF)) == NULL)
 		return false;
@@ -346,7 +492,10 @@ void DirectionDrawer::MainLoop() {
 
 
 		SDL_Event event;
-
+        NetEvent nevent;
+        Socket.rcv(nevent);
+        ExecNetEvent(nevent);
+        
 		while (SDL_PollEvent(&event))
 			OnEvent(&event);
 
@@ -439,7 +588,7 @@ void DirectionDrawer::Render() {
 int main(int argc, char* argv[]) {
 	DirectionDrawer Board;
 
-	if (!Board.PrepSDL())
+	if (!Board.PrepSDL(argv[1]))
 		return 1;
 
 	Board.Init();

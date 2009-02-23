@@ -1,135 +1,200 @@
-//
-// async_udp_echo_server.cpp
-// ~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2008 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
-#include <cstdlib>
 #include <iostream>
-#include <boost/bind.hpp>
-#include <boost/asio.hpp>
+#include <string>
+#include <sstream>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <unistd.h> /* close() */
+#include <string.h> /* memset() */
+#include "UDP_Sock.hpp"
+#include "NetEvent.hpp"
 
-using boost::asio::ip::udp;
-enum { max_length = 1024 };
+#define PORT 1500
+#define MAX_MSG 100
+#define SOCKET_ERROR -1
+#define FLAGS 0
+#define TIMEOUT 0 // ms
 
-class server
-{
-public:
-  server(boost::asio::io_service& io_service, short port)
-    : io_service_(io_service),
-      socket_(io_service, udp::endpoint(udp::v4(), port))
-  {
-    socket_.async_receive_from(
-        boost::asio::buffer(data_, max_length), sender_endpoint_,
-        boost::bind(&server::handle_receive_from, this,
-          boost::asio::placeholders::error,
-          boost::asio::placeholders::bytes_transferred));
-  }
+int UDP_Sock::isReadable(int sd,int * error) { // milliseconds
+  fd_set socketReadSet;
+  FD_ZERO(&socketReadSet);
+  FD_SET(sd,&socketReadSet);
+  struct timeval tv;
+  if (TIMEOUT) {
+    tv.tv_sec  = TIMEOUT / 1000;
+    tv.tv_usec = (TIMEOUT % 1000) * 1000;
+  } else {
+    tv.tv_sec  = 0;
+    tv.tv_usec = 0;
+  } // if
+  if (select(sd+1,&socketReadSet,0,0,&tv) == SOCKET_ERROR) {
+    *error = 1;
+    return 0;
+  } // if
+  *error = 0;
+  return FD_ISSET(sd,&socketReadSet) != 0;
+} /* isReadable */
 
-  void handle_receive_from(const boost::system::error_code& error,
-      size_t bytes_recvd)
-  {
-    if (!error && bytes_recvd > 0)
-    {
-      socket_.async_send_to(
-          boost::asio::buffer(data_, bytes_recvd), sender_endpoint_,
-          boost::bind(&server::handle_send_to, this,
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));
+void UDP_Sock::snd(const NetEvent& serial) {
+
+    std::ostringstream os;
+    boost::archive::text_oarchive oa(os);
+    oa << serial;
+    std::string message = os.str();
+    
+    rc = sendto(sd, message.c_str(), message.size(), FLAGS, 
+		(struct sockaddr *) &remoteAddr, sizeof(remoteAddr));
+
+    if(rc<0) {
+        std::cout << "cannot send data " << i-1 <<std::endl;
+        close(sd);
+        return;
     }
-    else
-    {
-      socket_.async_receive_from(
-          boost::asio::buffer(data_, max_length), sender_endpoint_,
-          boost::bind(&server::handle_receive_from, this,
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));
-    }
-  }
-
-  void handle_send_to(const boost::system::error_code& error, size_t bytes_sent)
-  {
-    socket_.async_receive_from(
-        boost::asio::buffer(data_, max_length), sender_endpoint_,
-        boost::bind(&server::handle_receive_from, this,
-          boost::asio::placeholders::error,
-          boost::asio::placeholders::bytes_transferred));
-  }
-
-private:
-  boost::asio::io_service& io_service_;
-  udp::socket socket_;
-  udp::endpoint sender_endpoint_;
-  char data_[max_length];
-};
-
-class client
-{
-  client(boost::asio::io_service& io_service, char* ip, short port)
-  : io_service_(io_service),
-    socket_(io_service, udp::endpoint(udp::v4(), 0))
-  {
-    udp::resolver resolver(io_service);
-    udp::resolver::query query(udp::v4(), ip, port);
-    iter_ = resolver.resolve(query);
-    socket_.async_receive_from(
-        boost::asio::buffer(data_, max_length), endpoint_,
-        boost::bind(&server::handle_receive_from, this,
-          boost::asio::placeholders::error,
-          boost::asio::placeholders::bytes_transferred));
-
-  }
-  
-  void snd(char* request)
-  {
-    size_t request_length = std::strlen(request);
-    socket_.send_to(boost::asio::buffer(request, request_length), *iter_);
-  }
-  
-  char* rcv()
-  {
-    char reply[max_length];
-    udp::endpoint sender_endpoint;
-    size_t reply_length = socket_.receive_from(
-        boost::asio::buffer(reply, max_length), sender_endpoint);
-
-
-
-
-private:
-    boost::asio::io_service& io_service_;
-    udp::socket socket_;
-    udp::resolver::iterator iter_;
-
-}; 
-
-
-int main(int argc, char* argv[])
-{
-  try
-  {
-    if (argc != 2)
-    {
-      std::cerr << "Usage: async_udp_echo_server <port>\n";
-      return 1;
-    }
-
-    boost::asio::io_service io_service;
-
-    using namespace std; // For atoi.
-    server s(io_service, atoi(argv[1]));
-
-    io_service.run();
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "Exception: " << e.what() << "\n";
-  }
-
-  return 0;
 }
 
+void UDP_Sock::rcv(NetEvent& serial) {
+    memset(msg,0x0,MAX_MSG);
+    remoteLen = sizeof(remoteAddr);
+
+    if (!isReadable(sd,&error)) return;
+
+    /* receive echoed message */
+    n = recvfrom(sd, msg, MAX_MSG, FLAGS,
+      (struct sockaddr *) &remoteAddr, &remoteLen);
+
+    if(n<0) {
+        std::cerr << "cannot receive data \n";
+        return;
+    }
+
+    /* print received message */
+    printf(": echo from %s:UDP%u : %s \n", 
+      inet_ntoa(remoteAddr.sin_addr),
+      ntohs(remoteAddr.sin_port),msg);
+    
+    std::istringstream is(std::string(msg, strlen(msg)));
+    boost::archive::text_iarchive ia(is);
+    ia >> serial;
+}
+
+void UDP_Sock::rcvsnd() {
+    memset(msg,0x0,MAX_MSG);
+    remoteLen = sizeof(remoteAddr);
+
+    if (!isReadable(sd,&error)) return;
+
+    /* receive echoed message */
+    n = recvfrom(sd, msg, MAX_MSG, FLAGS,
+      (struct sockaddr *) &remoteAddr, &remoteLen);
+
+    if(n<0) {
+        std::cerr << "cannot receive data \n";
+        return;
+    }
+
+    /* print received message */
+    printf(": echo from %s:UDP%u : %s \n", 
+      inet_ntoa(remoteAddr.sin_addr),
+      ntohs(remoteAddr.sin_port),msg);
+
+
+    rc = sendto(sd, msg, strlen(msg)+1, FLAGS, 
+		(struct sockaddr *) &remoteAddr, sizeof(remoteAddr));
+
+    if(rc<0) {
+        std::cout << "cannot send data " << i-1 <<std::endl;
+        close(sd);
+        return;
+    }
+}
+
+void UDP_Sock::sndrcv(char* message) {
+    rc = sendto(sd, message, strlen(message)+1, FLAGS, 
+		(struct sockaddr *) &remoteAddr, sizeof(remoteAddr));
+
+    if(rc<0) {
+        std::cout << "cannot send data " << i-1 <<std::endl;
+        close(sd);
+        return;
+    }
+    memset(msg,0x0,MAX_MSG);
+    remoteLen = sizeof(remoteAddr);
+
+    if (!isReadable(sd,&error)) return;
+
+    /* receive echoed message */
+    n = recvfrom(sd, msg, MAX_MSG, FLAGS,
+      (struct sockaddr *) &remoteAddr, &remoteLen);
+
+    if(n<0) {
+        std::cerr << "cannot receive data \n";
+        return;
+    }
+
+    /* print received message */
+    printf(": echo from %s:UDP%u : %s \n", 
+      inet_ntoa(remoteAddr.sin_addr),
+      ntohs(remoteAddr.sin_port),msg);
+}
+
+bool UDP_Sock::create_server() {
+    /* socket creation */
+    sd=socket(AF_INET, SOCK_DGRAM, 0);
+    if(sd<0) {
+        std::cerr << "cannot open socket \n";
+        return false;
+    }
+
+    /* bind local server port */
+    localAddr.sin_family = AF_INET;
+    localAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    localAddr.sin_port = htons(PORT);
+    rc = bind (sd, (struct sockaddr *) &localAddr,sizeof(localAddr));
+    if(rc<0) {
+        std::cerr << "cannot bind port number " << PORT << std::endl;
+        return false;
+    }
+    std::cout << "waiting for data on port udp " << PORT << std::endl;
+
+    return true;
+}
+
+bool UDP_Sock::create_client(char* host) {
+    h = gethostbyname(host);
+    if(h==NULL) {
+        std::cerr << "unknown host: " << host << std::endl;
+        return false;
+    }
+
+    std::cout << "starting to send data to " << h->h_name << " IP: " << 
+                 inet_ntoa(*(struct in_addr *)h->h_addr_list[0]) << std::endl;
+
+    remoteAddr.sin_family = h->h_addrtype;
+    memcpy((char *) &remoteAddr.sin_addr.s_addr, 
+        h->h_addr_list[0], h->h_length);
+    remoteAddr.sin_port = htons(PORT);
+
+    /* socket creation */
+    sd = socket(AF_INET,SOCK_DGRAM,0);
+    if(sd<0) {
+        std::cerr << "cannot open socket\n";
+        return false;
+    }
+
+    /* bind any port */
+    localAddr.sin_family = AF_INET;
+    localAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    localAddr.sin_port = htons(0);
+
+    rc = bind(sd, (struct sockaddr *) &localAddr, sizeof(localAddr));
+    if(rc<0) {
+        std::cerr << "cannot bind port\n";
+        return false;
+    }
+    
+    return true;
+}

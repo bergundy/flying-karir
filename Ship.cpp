@@ -10,10 +10,12 @@ using std::endl;
 using std::vector;
 using std::list;
 
-Ship::Ship() : missile_id(-1), ship_id(0), fire_damage(0), fire_wait(0), fire_cost(0), hit_points(0), accelerating(0), acc_speed(0), max_speed(0),  rotate(0),  rotate_speed(0), max_distance(0), distance(0) {}
+Ship::Ship() : missile_id(-1), ship_id(0), fire_damage(0), fire_wait(0),
+               fire_cost(0), hit_points(0), accelerating(0), acc_speed(0),
+               max_speed(0),  rotate(0),  rotate_speed(0), max_distance(0),
+               distance(0) {}
 
 void Ship::Accelerating(double i) {
-
 	accelerating += i;
 }
 

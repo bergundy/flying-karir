@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <list>
+#include <map>
 #include <SDL.h>
 #include <SDL_rotozoom.h>
 #include "Vector.hpp"
@@ -38,8 +39,9 @@ class Ship {
 	double fire_damage;
 
 	double hit_points;
-
-	
+    typedef void (*fp)();
+    typedef std::map<SDLKey, fp> keymap;
+    keymap action;
 		
 
 	public:
