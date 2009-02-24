@@ -7,7 +7,7 @@
 #include <arpa/inet.h>
 #define MAX_MSG 100
 
-class UDP_Sock {
+class Sock {
 public:
     bool create_server();
     bool create_client(char*);

@@ -30,9 +30,9 @@ public:
     NetEvent(bool d, Uint8 i, SDLKey key, Ship c) :id(i),event(key),down(d),ship(c) {}
     NetEvent() {}
     SDLKey& event_key() { return event; }
-    Uint8& get_id() { return id; }
-    bool& is_down() { return down; }
-    Ship& get_ship() { return ship; }
+    Uint8&  get_id()    { return id; }
+    bool&   is_down()   { return down; }
+    Ship&  get_ship() { return ship; }
 };
 
 #endif

@@ -20,7 +20,7 @@
 #define FLAGS 0
 #define TIMEOUT 0 // ms
 
-int UDP_Sock::isReadable(int sd,int * error) { // milliseconds
+int Sock::isReadable(int sd,int * error) { // milliseconds
   fd_set socketReadSet;
   FD_ZERO(&socketReadSet);
   FD_SET(sd,&socketReadSet);
@@ -41,8 +41,8 @@ int UDP_Sock::isReadable(int sd,int * error) { // milliseconds
 } /* isReadable */
 
 //template <class Serial>
-    //void UDP_Sock::snd(const Serial& serial)
-    void UDP_Sock::snd(const NetEvent& serial)
+    //void Sock::snd(const Serial& serial)
+    void Sock::snd(const NetEvent& serial)
 {
 
     std::ostringstream os;
@@ -60,8 +60,8 @@ int UDP_Sock::isReadable(int sd,int * error) { // milliseconds
     }
 }
 //template <class Serial>
-    //bool UDP_Sock::rcv(Serial& serial)
-    bool UDP_Sock::rcv(NetEvent& serial)
+    //bool Sock::rcv(Serial& serial)
+    bool Sock::rcv(NetEvent& serial)
 {
     memset(msg,0x0,MAX_MSG);
     remoteLen = sizeof(remoteAddr);
@@ -88,7 +88,7 @@ int UDP_Sock::isReadable(int sd,int * error) { // milliseconds
     return true;
 }
 
-bool UDP_Sock::create_server() {
+bool Sock::create_server() {
     /* socket creation */
     sd=socket(AF_INET, SOCK_DGRAM, 0);
     if(sd<0) {
@@ -110,7 +110,7 @@ bool UDP_Sock::create_server() {
     return true;
 }
 
-bool UDP_Sock::create_client(char* host) {
+bool Sock::create_client(char* host) {
     h = gethostbyname(host);
     if(h==NULL) {
         std::cerr << "unknown host: " << host << std::endl;

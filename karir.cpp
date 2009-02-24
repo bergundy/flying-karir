@@ -14,7 +14,8 @@
 #include "generic.hpp"
 #include "Ship.hpp"
 #include "Vector.hpp"
-#include "UDP_Sock.hpp"
+//#include "UDP_Sock.hpp"
+#include "TCP_Sock.hpp"
 #include "NetEvent.hpp"
 
 using namespace std;
@@ -31,9 +32,10 @@ class DirectionDrawer : public CEvent {
 	vector<Ship> ships;
 	double explosion_frames;
 	vector<Explosion> explosions;
-    UDP_Sock Socket;
+    Sock Socket;
     Uint8 myId;
     int loop;
+    string servAddr;
 
 	public:
 	DirectionDrawer();
@@ -396,11 +398,13 @@ void DirectionDrawer::Init() {
 	ships.push_back(ship2);
 }
 
-bool DirectionDrawer::PrepSDL(char* server_addr) { 
+bool DirectionDrawer::PrepSDL(char* addr) { 
+    if (addr != NULL)
+       servAddr = addr;
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
 		return false;
 
-    if ( server_addr == NULL ) {
+    if ( servAddr == "" ) {
         cout << "initializing server ..\n";
         if ( !Socket.create_server() )
             return false;
@@ -409,7 +413,7 @@ bool DirectionDrawer::PrepSDL(char* server_addr) {
     }
     else {
         cout << "initializing client ..\n";
-        if ( !Socket.create_client(server_addr) )
+        if ( !Socket.create_client(servAddr) )
             return false;
         myId = 2;
     }
@@ -497,7 +501,7 @@ void DirectionDrawer::MainLoop() {
         }
 
         NetEvent nevent;
-        if (loop == 10) {
+        if (loop == -1) {
             for (ship_iter si = ships.begin(); si != ships.end(); ++si)
                 for (ship_iter si = ships.begin(); si != ships.end(); ++si)
                     if (si->ship_id == myId ) {
@@ -510,7 +514,8 @@ void DirectionDrawer::MainLoop() {
                     }
             loop = 0;
         }
-        while (Socket.rcv(nevent)) {
+        cout << "pre loop\n";
+        while (Socket.rcv(nevent,servAddr)) {
             for (ship_iter si = ships.begin(); si != ships.end(); ++si)
                 if (si->ship_id == nevent.get_id() ) {
                     cout << "recieved positions to remote host" << endl;
@@ -521,8 +526,7 @@ void DirectionDrawer::MainLoop() {
                     break;
                 }
         }
-
-                   //cout << "im still alive!" << endl;
+        cout << "past loop\n";
 		if (Pause < 0) { 
 			for (ship_iter sp = ships.begin(); sp != ships.end(); sp++) 
 				sp->NextShip();
