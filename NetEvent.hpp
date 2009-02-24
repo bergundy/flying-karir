@@ -2,6 +2,7 @@
 #define NETEVENT_HPP
 #include <SDL.h>
 #include "generic.hpp"
+#include "Ship.hpp"
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 
@@ -18,20 +19,20 @@ private:
         ar & id;
         ar & event; 
         ar & down;
-        ar & cords;
+        ar & ship;
     }
     Uint8  id;
     bool   down;
     SDLKey event;
-    Cords  cords;
+    Ship   ship;
 
 public:
-    NetEvent(bool d, Uint8 i, SDLKey key, Cords c) :id(i),event(key),down(d),cords(c) {}
+    NetEvent(bool d, Uint8 i, SDLKey key, Ship c) :id(i),event(key),down(d),ship(c) {}
     NetEvent() {}
-    SDLKey event_key() const { return event; }
-    Uint8 get_id() const { return id; }
-    bool is_down() const { return down; }
-    Cords get_cords() const { return cords; }
+    SDLKey& event_key() { return event; }
+    Uint8& get_id() { return id; }
+    bool& is_down() { return down; }
+    Ship& get_ship() { return ship; }
 };
 
 #endif

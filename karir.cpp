@@ -33,10 +33,11 @@ class DirectionDrawer : public CEvent {
 	vector<Explosion> explosions;
     UDP_Sock Socket;
     Uint8 myId;
+    int loop;
 
 	public:
 	DirectionDrawer();
-    void ExecNetEvent(const NetEvent&);
+    void ExecNetEvent(NetEvent&);
     bool PrepSDL(char*);
 	void Init();
 	void MainLoop();
@@ -60,9 +61,10 @@ void DirectionDrawer::OnKeyDown(SDLKey sym, SDLMod mod, Uint16 unicode) {
     Cords cords;
     for (ship_iter a = ships.begin(); a != ships.end(); a++) 
         if (a->ship_id == myId)
-            cords = a->ShipCords;
-    NetEvent baba(true,myId, sym, cords);
-    Socket.snd(baba);
+    {
+        NetEvent baba(true,myId, sym, *a);
+        Socket.snd(baba);
+    }
 	switch(sym) { 
 		case SDLK_ESCAPE: 
 			Running = 0;
@@ -170,9 +172,10 @@ void DirectionDrawer::OnKeyUp(SDLKey sym, SDLMod mod, Uint16 unicode) {
     Cords cords;
     for (ship_iter a = ships.begin(); a != ships.end(); a++) 
         if (a->ship_id == myId)
-            cords = a->ShipCords;
-    NetEvent baba(false,myId, sym, cords);
-    Socket.snd(baba);
+        {
+            NetEvent baba(false,myId, sym, *a);
+            Socket.snd(baba);
+        }
     
     for (ship_iter a = ships.begin(); a != ships.end(); a++) {
         Ship::keymap::const_iterator it = a->member_callback.find(sym);
@@ -252,7 +255,7 @@ void DirectionDrawer::OnKeyUp(SDLKey sym, SDLMod mod, Uint16 unicode) {
 	}
 }
 
-void DirectionDrawer::ExecNetEvent(const NetEvent& event) {
+void DirectionDrawer::ExecNetEvent(NetEvent& event) {
     Uint8 id   = event.get_id();
     SDLKey sym = event.event_key();
     bool down  = event.is_down();
@@ -359,6 +362,7 @@ void DirectionDrawer::Init() {
 	vector<Ship> empty_ship_vec;
 	ships = empty_ship_vec;
 	explosion_frames = 18;
+    loop = 0;
 
 	Ship ship;
 	ship.ship_id = 1;
@@ -484,6 +488,7 @@ void DirectionDrawer::FindCollisions() {
 void DirectionDrawer::MainLoop() {
 
 	while (Running == 1) {
+        ++loop;
 
 		SDL_Event event;
         
@@ -492,11 +497,27 @@ void DirectionDrawer::MainLoop() {
         }
 
         NetEvent nevent;
+        if (loop == 10) {
+            for (ship_iter si = ships.begin(); si != ships.end(); ++si)
+                for (ship_iter si = ships.begin(); si != ships.end(); ++si)
+                    if (si->ship_id == myId ) {
+                        //cout << "sending positions to remote host" << endl;
+                        nevent.event_key() = (SDLKey)0;
+                        nevent.get_id()    = myId;
+                        nevent.is_down()   = false;
+                        nevent.get_ship()  = *si;
+                        Socket.snd(nevent);
+                    }
+            loop = 0;
+        }
         while (Socket.rcv(nevent)) {
             for (ship_iter si = ships.begin(); si != ships.end(); ++si)
                 if (si->ship_id == nevent.get_id() ) {
-                    si->ShipCords = nevent.get_cords();
-                    ExecNetEvent(nevent);
+                    cout << "recieved positions to remote host" << endl;
+                    si->ShipCords = nevent.get_ship().ShipCords;
+                    si->accelerating = nevent.get_ship().accelerating;
+                    si->rotate = nevent.get_ship().rotate;
+                    if (nevent.event_key() != 0) ExecNetEvent(nevent);
                     break;
                 }
         }

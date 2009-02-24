@@ -9,15 +9,27 @@
 #include "Vector.hpp"
 #include "generic.hpp"
 #include "CSurface.h"
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 class Ship {
+    friend class boost::serialization::access;
+
 	public:
 	Cords ShipCords;
 	std::list<Cords> Last_ShipCords;
-
-	private:
 	double rotate;
 	double accelerating;
+
+	private:
+
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & rotate;
+        ar & accelerating; 
+        ar & ShipCords;
+    }
 
 
 	public:
