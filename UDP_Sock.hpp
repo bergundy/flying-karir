@@ -10,7 +10,7 @@
 class Sock {
 public:
     bool create_server();
-    bool create_client(char*);
+    bool create_client(std::string);
 
     //template <class Serial> void snd(const Serial&);
     //template <class Serial> bool rcv(Serial&);

@@ -5,7 +5,7 @@
 #include "Ship.hpp"
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#define MAXMSG 100
+#define MAXMSG 1024
 
 class Sock {
 public:

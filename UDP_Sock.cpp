@@ -110,8 +110,8 @@ bool Sock::create_server() {
     return true;
 }
 
-bool Sock::create_client(char* host) {
-    h = gethostbyname(host);
+bool Sock::create_client(std::string host) {
+    h = gethostbyname(host.c_str());
     if(h==NULL) {
         std::cerr << "unknown host: " << host << std::endl;
         return false;

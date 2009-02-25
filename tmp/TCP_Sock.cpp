@@ -16,7 +16,7 @@
 //#include <SDL.h>
 
 #define PORT   2020
-#define MAXMSG 100
+#define MAXMSG 1024
 #define SLOTS  10
 #define FLAGS  0
 
@@ -137,7 +137,7 @@ void Sock::snd(const NetEvent& serial) //, std::string servName = "")
     oa << serial;
     std::string message = os.str();
     
-    if(write(listener, message.c_str(), message.size()) == -1) {
+    if(send(listener, message.c_str(), message.size(),0) == -1) {
         std::cout << "cannot send data " << std::endl;
         close(listener);
         return;
@@ -297,12 +297,15 @@ if (servName != "") {
                     std::istringstream is(std::string(buf, strlen(buf)));
                     boost::archive::text_iarchive ia(is);
                     ia >> serial;
+                    return true;
                 }
             }
+            std::cout << "returning false\n";
+            return false;
         }
     }
-    std::cout << "returning true\n";
-    return true;
+    std::cout << "returning false\n";
+    return false;
 }
 /*
 int main(int argc, char *argv[])

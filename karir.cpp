@@ -14,8 +14,8 @@
 #include "generic.hpp"
 #include "Ship.hpp"
 #include "Vector.hpp"
-//#include "UDP_Sock.hpp"
-#include "TCP_Sock.hpp"
+#include "UDP_Sock.hpp"
+//#include "TCP_Sock.hpp"
 #include "NetEvent.hpp"
 
 using namespace std;
@@ -409,7 +409,7 @@ bool DirectionDrawer::PrepSDL(char* addr) {
         if ( !Socket.create_server() )
             return false;
         myId = 1;
-        SDL_Delay(2000);
+        SDL_Delay(1000);
     }
     else {
         cout << "initializing client ..\n";
@@ -500,33 +500,36 @@ void DirectionDrawer::MainLoop() {
 			OnEvent(&event);
         }
 
-        NetEvent nevent;
-        if (loop == -1) {
+        //cout << "im still alive\n";
+        NetEvent nevent_s,nevent_r;
+        if (loop == 5) {
             for (ship_iter si = ships.begin(); si != ships.end(); ++si)
                 for (ship_iter si = ships.begin(); si != ships.end(); ++si)
                     if (si->ship_id == myId ) {
                         //cout << "sending positions to remote host" << endl;
-                        nevent.event_key() = (SDLKey)0;
-                        nevent.get_id()    = myId;
-                        nevent.is_down()   = false;
-                        nevent.get_ship()  = *si;
-                        Socket.snd(nevent);
+                        nevent_s.event_key() = (SDLKey)0;
+                        nevent_s.get_id()    = myId;
+                        nevent_s.is_down()   = false;
+                        nevent_s.get_ship()  = *si;
+                        Socket.snd(nevent_s);
                     }
             loop = 0;
         }
-        cout << "pre loop\n";
-        while (Socket.rcv(nevent,servAddr)) {
+        //cout << "pre loop\n";
+        //while (Socket.rcv(nevent_r,servAddr)) {
+        while (Socket.rcv(nevent_r)) {
             for (ship_iter si = ships.begin(); si != ships.end(); ++si)
-                if (si->ship_id == nevent.get_id() ) {
-                    cout << "recieved positions to remote host" << endl;
-                    si->ShipCords = nevent.get_ship().ShipCords;
-                    si->accelerating = nevent.get_ship().accelerating;
-                    si->rotate = nevent.get_ship().rotate;
-                    if (nevent.event_key() != 0) ExecNetEvent(nevent);
+                if (si->ship_id == nevent_r.get_id() ) {
+                    cout << "recieved positions from remote host" << endl;
+                    si->ShipCords = nevent_r.get_ship().ShipCords;
+                    si->accelerating = nevent_r.get_ship().accelerating;
+                    si->rotate = nevent_r.get_ship().rotate;
+                    if (nevent_r.event_key() != 0) ExecNetEvent(nevent_r);
                     break;
                 }
         }
-        cout << "past loop\n";
+        //cout << "past loop\n";
+
 		if (Pause < 0) { 
 			for (ship_iter sp = ships.begin(); sp != ships.end(); sp++) 
 				sp->NextShip();
@@ -554,6 +557,7 @@ void DirectionDrawer::MainLoop() {
 		for (ship_iter sp = ships.begin(); sp != ships.end(); sp++)
 			if (sp->hit_points <= 0)
 				ships.erase(sp--);
+
 
 
 	}
