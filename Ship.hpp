@@ -26,6 +26,7 @@ class Ship {
     template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
+        ar & ship_vec;
         ar & rotate;
         ar & accelerating; 
         ar & ShipCords;

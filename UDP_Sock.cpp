@@ -15,7 +15,6 @@
 #include "Ship.hpp"
 
 #define PORT 1500
-#define MAX_MSG 100
 #define SOCKET_ERROR -1
 #define FLAGS 0
 #define TIMEOUT 0 // ms
@@ -40,9 +39,7 @@ int Sock::isReadable(int sd,int * error) { // milliseconds
   return FD_ISSET(sd,&socketReadSet) != 0;
 } /* isReadable */
 
-//template <class Serial>
-    //void Sock::snd(const Serial& serial)
-    void Sock::snd(const NetEvent& serial)
+void Sock::snd(const NetEvent& serial)
 {
 
     std::ostringstream os;
@@ -50,18 +47,19 @@ int Sock::isReadable(int sd,int * error) { // milliseconds
     oa << serial;
     std::string message = os.str();
     
-    rc = sendto(sd, message.c_str(), message.size(), FLAGS, 
-		(struct sockaddr *) &remoteAddr, sizeof(remoteAddr));
+    if (remoteDefined) {
+        rc = sendto(sd, message.c_str(), message.size(), FLAGS, 
+            (struct sockaddr *) &remoteAddr, sizeof(remoteAddr));
 
-    if(rc<0) {
-        std::cout << "cannot send data " << std::endl;
-        close(sd);
-        return;
-    }
+        if(rc<0) {
+            std::cout << "cannot send data " << std::endl;
+            close(sd);
+            return;
+        }
+    }        
 }
-//template <class Serial>
-    //bool Sock::rcv(Serial& serial)
-    bool Sock::rcv(NetEvent& serial)
+
+bool Sock::rcv(NetEvent& serial)
 {
     memset(msg,0x0,MAX_MSG);
     remoteLen = sizeof(remoteAddr);
@@ -76,6 +74,8 @@ int Sock::isReadable(int sd,int * error) { // milliseconds
         std::cerr << "cannot receive data\n";
         return false;
     }
+    
+    remoteDefined = true;
 
     /* print received message */
     std::cout << "echo from " << inet_ntoa(remoteAddr.sin_addr)
@@ -95,6 +95,8 @@ bool Sock::create_server() {
         std::cerr << "cannot open socket \n";
         return false;
     }
+
+    remoteDefined = false;
 
     /* bind local server port */
     localAddr.sin_family = AF_INET;
@@ -124,6 +126,7 @@ bool Sock::create_client(std::string host) {
     memcpy((char *) &remoteAddr.sin_addr.s_addr, 
         h->h_addr_list[0], h->h_length);
     remoteAddr.sin_port = htons(PORT);
+    remoteDefined = true;
 
     /* socket creation */
     sd = socket(AF_INET,SOCK_DGRAM,0);

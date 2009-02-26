@@ -5,15 +5,13 @@
 #include "Ship.hpp"
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#define MAX_MSG 100
+#define MAX_MSG 200
 
 class Sock {
 public:
     bool create_server();
     bool create_client(std::string);
 
-    //template <class Serial> void snd(const Serial&);
-    //template <class Serial> bool rcv(Serial&);
     void snd(const NetEvent&);
     bool rcv(NetEvent&);
     int isReadable(int sd,int * error);
@@ -24,6 +22,7 @@ private:
     struct sockaddr_in localAddr, remoteAddr;
     struct hostent *h;
 	fd_set fds;			/* Set of file descriptors to poll*/
+    bool remoteDefined;
 };
 
 

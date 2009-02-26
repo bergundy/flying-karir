@@ -257,10 +257,10 @@ void DirectionDrawer::OnKeyUp(SDLKey sym, SDLMod mod, Uint16 unicode) {
 	}
 }
 
-void DirectionDrawer::ExecNetEvent(NetEvent& event) {
-    Uint8 id   = event.get_id();
-    SDLKey sym = event.event_key();
-    bool down  = event.is_down();
+void DirectionDrawer::ExecNetEvent(NetEvent& nevent) {
+    Uint8 id   = nevent.id;
+    SDLKey sym = nevent.event;
+    bool down  = nevent.down;
     ship_iter a;
     for (ship_iter iter = ships.begin(); iter != ships.end(); ++iter) 
         if (iter->ship_id == id) {
@@ -494,41 +494,43 @@ void DirectionDrawer::MainLoop() {
 	while (Running == 1) {
         ++loop;
 
+        //cout << "im still alive\n";
+        NetEvent nevent_s,nevent_r;
+        //cout << "pre loop\n";
+        //while (Socket.rcv(nevent_r,servAddr)) {
+        while (Socket.rcv(nevent_r)) {
+            for (ship_iter si = ships.begin(); si != ships.end(); ++si)
+                if (si->ship_id == nevent_r.id ) {
+                    cout << "recieved positions from remote host" << endl;
+                    si->ShipCords = nevent_r.ship.ShipCords;
+                    si->accelerating = nevent_r.ship.accelerating;
+                    si->ship_vec = nevent_r.ship.ship_vec;
+                    si->rotate = nevent_r.ship.rotate;
+                    if (nevent_r.event != 0) ExecNetEvent(nevent_r);
+                    break;
+                }
+        }
+        //cout << "past loop\n";
+        if (loop == 1) {
+            for (ship_iter si = ships.begin(); si != ships.end(); ++si)
+                for (ship_iter si = ships.begin(); si != ships.end(); ++si)
+                    if (si->ship_id == myId ) {
+                        //cout << "sending positions to remote host" << endl;
+                        nevent_s.event = (SDLKey)0;
+                        nevent_s.id    = myId;
+                        nevent_s.down  = false;
+                        nevent_s.ship  = *si;
+                        Socket.snd(nevent_s);
+                    }
+            loop = 0;
+        }
+
 		SDL_Event event;
         
 		while (SDL_PollEvent(&event)) {
 			OnEvent(&event);
         }
 
-        //cout << "im still alive\n";
-        NetEvent nevent_s,nevent_r;
-        if (loop == 5) {
-            for (ship_iter si = ships.begin(); si != ships.end(); ++si)
-                for (ship_iter si = ships.begin(); si != ships.end(); ++si)
-                    if (si->ship_id == myId ) {
-                        //cout << "sending positions to remote host" << endl;
-                        nevent_s.event_key() = (SDLKey)0;
-                        nevent_s.get_id()    = myId;
-                        nevent_s.is_down()   = false;
-                        nevent_s.get_ship()  = *si;
-                        Socket.snd(nevent_s);
-                    }
-            loop = 0;
-        }
-        //cout << "pre loop\n";
-        //while (Socket.rcv(nevent_r,servAddr)) {
-        while (Socket.rcv(nevent_r)) {
-            for (ship_iter si = ships.begin(); si != ships.end(); ++si)
-                if (si->ship_id == nevent_r.get_id() ) {
-                    cout << "recieved positions from remote host" << endl;
-                    si->ShipCords = nevent_r.get_ship().ShipCords;
-                    si->accelerating = nevent_r.get_ship().accelerating;
-                    si->rotate = nevent_r.get_ship().rotate;
-                    if (nevent_r.event_key() != 0) ExecNetEvent(nevent_r);
-                    break;
-                }
-        }
-        //cout << "past loop\n";
 
 		if (Pause < 0) { 
 			for (ship_iter sp = ships.begin(); sp != ships.end(); sp++) 
